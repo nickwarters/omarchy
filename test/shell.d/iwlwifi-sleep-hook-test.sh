@@ -45,6 +45,20 @@ fi
 exit 0
 SH
 
+  # Records the call and drops the owner flags, so the tests can install without root.
+  cat >"$tmp_dir/bin/install" <<SH
+#!/bin/bash
+echo "install \$*" >>"$tmp_dir/calls"
+args=()
+while ((\$#)); do
+  case \$1 in
+    -o|-g) shift 2 ;;
+    *) args+=("\$1"); shift ;;
+  esac
+done
+exec /usr/bin/install "\${args[@]}"
+SH
+
   cat >"$tmp_dir/bin/logger" <<'SH'
 #!/bin/bash
 exit 0
@@ -169,6 +183,7 @@ mkdir -p "$inst_dir/etc/modprobe.d" "$inst_dir/usr/lib/systemd/system-sleep"
       "$ROOT/install/hardware/intel/fix-wifi7-eht.sh" | bash
 )
 [[ -f $inst_dir/usr/lib/systemd/system-sleep/iwlwifi-reset ]] || fail "installer copies iwlwifi-reset hook"
+grep -q '^install -D -m 0755 -o root -g root ' "$tmp_dir/calls" || fail "installer publishes the hook root-owned"
 pass "hardware installer installs iwlwifi-reset hook for BE200"
 rm -rf "$inst_dir"
 
@@ -200,7 +215,7 @@ run_migration() {
 # Affected install copies hook
 run_migration "$be200_pci"
 [[ -f $mig_dir/system-sleep/iwlwifi-reset ]] || fail "migration copies iwlwifi-reset hook for BE200"
-grep -q 'sudo cp -p' "$mig_dir/calls" || fail "migration uses sudo to copy hook"
+grep -q '^sudo install -D -m 0755 -o root -g root ' "$mig_dir/calls" || fail "migration publishes the hook root-owned"
 pass "migration installs iwlwifi-reset hook for BE200"
 
 # Up-to-date no-op skips sudo copy

@@ -14,6 +14,5 @@ if lspci -nn | grep -qE '\[8086:(e440|272b)\]'; then
 options iwlwifi disable_11be=Y
 EOF
 
-  mkdir -p /usr/lib/systemd/system-sleep
-  cp -p "$OMARCHY_PATH/default/systemd/system-sleep/iwlwifi-reset" /usr/lib/systemd/system-sleep/
+  install -D -m 0755 -o root -g root "$OMARCHY_PATH/default/systemd/system-sleep/iwlwifi-reset" /usr/lib/systemd/system-sleep/iwlwifi-reset
 fi
